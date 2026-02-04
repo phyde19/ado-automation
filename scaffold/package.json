@@ -1,0 +1,13 @@
+{
+  "name": "ado-scaffold",
+  "version": "1.0.0",
+  "description": "Scaffold test data in Azure DevOps",
+  "type": "module",
+  "scripts": {
+    "scaffold": "node scaffold.js",
+    "clean": "node clean.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

@@ -20,9 +20,13 @@ export async function getEpics() {
 }
 
 // Get work items by type (for tree root)
-export async function getWorkItemsByType(type = 'Epic') {
-  const params = type ? `?type=${encodeURIComponent(type)}` : '';
-  return fetchJson(`${API_BASE}/workitems${params}`);
+// year: optional year filter (e.g., '2026', '2025') - filters by CreatedDate
+export async function getWorkItemsByType(type = 'Epic', { year } = {}) {
+  const params = new URLSearchParams();
+  if (type) params.append('type', type);
+  if (year) params.append('year', year);
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  return fetchJson(`${API_BASE}/workitems${queryString}`);
 }
 
 // Get children of a work item

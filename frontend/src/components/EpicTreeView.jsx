@@ -6,6 +6,7 @@ import { WorkItemTypeBadge, WorkItemStateBadge, WorkItemId } from './WorkItemBad
 import { Spinner, FilterLabel, Select, IconButton, Icons, SearchInput, Typeahead, PinButton, openWorkItem } from './shared/ui';
 
 const workItemTypes = ['All', 'Epic', 'Feature', 'User Story', 'Task'];
+const yearOptions = ['2026', '2025', 'All'];
 
 function getParentId(item) {
   const url = item?.relations?.find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse')?.url;
@@ -206,6 +207,7 @@ function PinnedAndTreeView({ items, pinnedIds, isPinned, togglePin, openWorkItem
 export default function EpicTreeView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('All');
+  const [selectedYear, setSelectedYear] = useState('2026'); // Default to current year
   const [filterEpicId, setFilterEpicId] = useState(null); // number | null
   const [filterFeatureId, setFilterFeatureId] = useState(null); // number | null
   const [filterUserStoryId, setFilterUserStoryId] = useState(null); // number | null
@@ -221,23 +223,26 @@ export default function EpicTreeView() {
   // - All: show Epic tree (expand to see all types)
   // - Otherwise: show that type at the top level
   const rootType = selectedType === 'All' ? 'Epic' : selectedType;
+  
+  // Year filter: 'All' means no filter, otherwise filter by year
+  const yearFilter = selectedYear === 'All' ? undefined : selectedYear;
 
   const { data: rootData, loading, error, refetch } = useApi(
-    () => getWorkItemsByType(rootType),
-    [rootType],
-    { cacheKey: `workitems-root-${rootType}`, cacheDuration: 2 * 60 * 1000 }
+    () => getWorkItemsByType(rootType, { year: yearFilter }),
+    [rootType, yearFilter],
+    { cacheKey: `workitems-root-${rootType}-${yearFilter || 'all'}`, cacheDuration: 2 * 60 * 1000 }
   );
   
   const rootItems = rootData?.value || [];
 
-  // Reset filters when type changes
+  // Reset filters when type or year changes
   useEffect(() => {
     setFilterEpicId(null);
     setFilterFeatureId(null);
     setFilterUserStoryId(null);
     setExpandedItems(new Set());
     setChildrenCache({});
-  }, [selectedType]);
+  }, [selectedType, selectedYear]);
 
   // Parent mapping support for filter dropdowns (only when needed)
   // Features: need parent Epic titles
@@ -469,6 +474,15 @@ export default function EpicTreeView() {
             <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
               {workItemTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <FilterLabel>Created</FilterLabel>
+            <Select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              {yearOptions.map(year => (
+                <option key={year} value={year}>{year === 'All' ? 'All time' : `${year}+`}</option>
               ))}
             </Select>
           </div>

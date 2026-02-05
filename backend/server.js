@@ -184,9 +184,11 @@ app.get('/api/workitems/:id', async (req, res) => {
 
 // Get work items by type (for tree root)
 // type: All|Epic|Feature|User Story|Task (defaults to Epic)
+// year: optional year filter (e.g., 2026, 2025) - filters by CreatedDate
 app.get('/api/workitems', async (req, res) => {
   try {
     const type = escapeWiql(req.query.type) || 'Epic';
+    const year = req.query.year;
 
     let typeFilter;
     if (type === 'All') {
@@ -195,11 +197,18 @@ app.get('/api/workitems', async (req, res) => {
       typeFilter = `[System.WorkItemType] = '${type}'`;
     }
 
+    // Build year filter (CreatedDate >= start of year)
+    let yearFilter = '';
+    if (year && /^\d{4}$/.test(year)) {
+      yearFilter = `AND [System.CreatedDate] >= '${year}-01-01T00:00:00Z'`;
+    }
+
     const query = `
       SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.AreaPath], [System.IterationPath]
       FROM WorkItems
       WHERE ${typeFilter}
       AND [System.State] <> 'Removed'
+      ${yearFilter}
       ORDER BY [System.WorkItemType], [System.CreatedDate] DESC
     `;
 

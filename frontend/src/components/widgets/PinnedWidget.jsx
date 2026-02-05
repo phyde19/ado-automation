@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { usePinnedItems } from '../../hooks/usePinnedItems';
 import { useApi } from '../../hooks/useApi';
 import { getWorkItemsBatch } from '../../services/api';
-import { Widget, WidgetLink, WidgetEmpty, Spinner, Icons, PinButton } from '../shared/ui';
+import { Widget, WidgetEmpty, Spinner, Icons, PinButton, openWorkItem } from '../shared/ui';
 import { WorkItemTypeBadge, WorkItemStateBadge, WorkItemId } from '../WorkItemBadge';
 
 export default function PinnedWidget({ className = '' }) {
@@ -20,14 +20,6 @@ export default function PinnedWidget({ className = '' }) {
   );
   
   const workItems = data?.value || [];
-  
-  const openWorkItem = (id) => {
-    const org = localStorage.getItem('ado_org');
-    const project = localStorage.getItem('ado_project');
-    if (org && project) {
-      window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
-    }
-  };
   
   return (
     <Widget 

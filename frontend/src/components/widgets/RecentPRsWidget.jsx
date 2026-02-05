@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApi } from '../../hooks/useApi';
 import { getPullRequests } from '../../services/api';
-import { Widget, WidgetLink, WidgetEmpty, Spinner } from '../shared/ui';
+import { Widget, WidgetLink, WidgetEmpty, Spinner, getTimeAgo } from '../shared/ui';
 
 // PR status badge
 function PRStatusBadge({ status }) {
@@ -26,21 +26,6 @@ function VoteIndicator({ vote }) {
   if (vote <= -10) return <span className="w-2 h-2 rounded-full bg-red-500" title="Rejected" />;
   if (vote <= -5) return <span className="w-2 h-2 rounded-full bg-yellow-500" title="Waiting for author" />;
   return <span className="w-2 h-2 rounded-full bg-slate-600" title="No vote" />;
-}
-
-// Format relative time
-function getTimeAgo(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
 }
 
 export default function RecentPRsWidget({ className = '' }) {

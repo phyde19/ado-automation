@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { searchWorkItems } from '../../services/api';
-import { Widget, WidgetLink, WidgetEmpty, Spinner, SearchInput } from '../shared/ui';
+import { Widget, WidgetLink, WidgetEmpty, Spinner, SearchInput, openWorkItem } from '../shared/ui';
 import { WorkItemTypeBadge, WorkItemStateBadge, WorkItemId } from '../WorkItemBadge';
 
 const DEBOUNCE_MS = 300;
@@ -54,14 +54,6 @@ export default function WorkItemSearchWidget({ className = '' }) {
       clearTimeout(timer);
     };
   }, [query]);
-  
-  const openWorkItem = (id) => {
-    const org = localStorage.getItem('ado_org');
-    const project = localStorage.getItem('ado_project');
-    if (org && project) {
-      window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
-    }
-  };
   
   return (
     <Widget 

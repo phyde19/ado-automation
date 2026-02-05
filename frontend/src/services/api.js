@@ -110,14 +110,6 @@ export function getWorkItemUrl(orgUrl, projectName, workItemId) {
   return `https://dev.azure.com/${org}/${project}/_workitems/edit/${workItemId}`;
 }
 
-// Get sprint work items (simple list for widget)
-export async function getSprintWorkItems(iterationPath, { assignedTo } = {}) {
-  const params = new URLSearchParams();
-  if (assignedTo) params.append('assignedTo', assignedTo);
-  const queryString = params.toString() ? `?${params.toString()}` : '';
-  return fetchJson(`${API_BASE}/iterations/${encodeURIComponent(iterationPath)}/workitems${queryString}`);
-}
-
 // Get pull requests
 export async function getPullRequests({ status = 'active', top = 20 } = {}) {
   const params = new URLSearchParams();

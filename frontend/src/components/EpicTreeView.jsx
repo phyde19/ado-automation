@@ -3,7 +3,7 @@ import { getWorkItemsByType, getChildren, searchWorkItems, getWorkItemsBatch } f
 import { useApi } from '../hooks/useApi';
 import { usePinnedItems } from '../hooks/usePinnedItems';
 import { WorkItemTypeBadge, WorkItemStateBadge, WorkItemId } from './WorkItemBadge';
-import { Spinner, FilterLabel, Select, IconButton, Icons, SearchInput, Typeahead, PinButton } from './shared/ui';
+import { Spinner, FilterLabel, Select, IconButton, Icons, SearchInput, Typeahead, PinButton, openWorkItem } from './shared/ui';
 
 const workItemTypes = ['All', 'Epic', 'Feature', 'User Story', 'Task'];
 
@@ -24,7 +24,7 @@ function getTitle(item) {
   return item?.fields?.['System.Title'] || 'Untitled';
 }
 
-function TreeNode({ item, level = 0, onOpenWorkItem, expandedItems, toggleExpand, childrenCache, loadChildren, checkPinned, onTogglePin }) {
+function TreeNode({ item, level = 0, openWorkItem, expandedItems, toggleExpand, childrenCache, loadChildren, checkPinned, onTogglePin }) {
   const fields = item.fields || {};
   const id = item.id;
   const title = fields['System.Title'] || 'Untitled';
@@ -75,7 +75,7 @@ function TreeNode({ item, level = 0, onOpenWorkItem, expandedItems, toggleExpand
         {/* Content area - clickable to open WI */}
         <div 
           className="flex items-center gap-3 flex-1 min-w-0 py-2 px-2 rounded-lg cursor-pointer hover:bg-slate-800/50"
-          onClick={() => onOpenWorkItem(id)}
+          onClick={() => openWorkItem(id)}
         >
           <WorkItemTypeBadge type={type} compact />
           
@@ -84,7 +84,7 @@ function TreeNode({ item, level = 0, onOpenWorkItem, expandedItems, toggleExpand
           </span>
           
           <WorkItemStateBadge state={state} />
-          <WorkItemId id={id} onClick={(e) => { e.stopPropagation(); onOpenWorkItem(id); }} />
+          <WorkItemId id={id} onClick={(e) => { e.stopPropagation(); openWorkItem(id); }} />
           
           {/* Pin button */}
           {onTogglePin && <PinButton isPinned={pinned} onToggle={() => onTogglePin(id)} />}
@@ -106,7 +106,7 @@ function TreeNode({ item, level = 0, onOpenWorkItem, expandedItems, toggleExpand
                 key={child.id}
                 item={child}
                 level={level + 1}
-                onOpenWorkItem={onOpenWorkItem}
+                openWorkItem={openWorkItem}
                 expandedItems={expandedItems}
                 toggleExpand={toggleExpand}
                 childrenCache={childrenCache}
@@ -123,7 +123,7 @@ function TreeNode({ item, level = 0, onOpenWorkItem, expandedItems, toggleExpand
 }
 
 // Component that shows pinned items in a separate section at the top
-function PinnedAndTreeView({ items, pinnedIds, isPinned, togglePin, onOpenWorkItem, expandedItems, toggleExpand, childrenCache, loadChildren, emptyMessage }) {
+function PinnedAndTreeView({ items, pinnedIds, isPinned, togglePin, openWorkItem, expandedItems, toggleExpand, childrenCache, loadChildren, emptyMessage }) {
   // Separate pinned items from the rest
   const pinnedItems = useMemo(() => 
     items.filter(item => pinnedIds.has(item.id)),
@@ -159,7 +159,7 @@ function PinnedAndTreeView({ items, pinnedIds, isPinned, togglePin, onOpenWorkIt
                 key={item.id}
                 item={item}
                 level={0}
-                onOpenWorkItem={onOpenWorkItem}
+                openWorkItem={openWorkItem}
                 expandedItems={expandedItems}
                 toggleExpand={toggleExpand}
                 childrenCache={childrenCache}
@@ -187,7 +187,7 @@ function PinnedAndTreeView({ items, pinnedIds, isPinned, togglePin, onOpenWorkIt
                 key={item.id}
                 item={item}
                 level={0}
-                onOpenWorkItem={onOpenWorkItem}
+                openWorkItem={openWorkItem}
                 expandedItems={expandedItems}
                 toggleExpand={toggleExpand}
                 childrenCache={childrenCache}
@@ -349,14 +349,6 @@ export default function EpicTreeView() {
       setChildrenCache(prev => ({ ...prev, [parentId]: result.value || [] }));
     } catch (err) {
       setChildrenCache(prev => ({ ...prev, [parentId]: [] }));
-    }
-  };
-  
-  const onOpenWorkItem = (id) => {
-    const org = localStorage.getItem('ado_org');
-    const project = localStorage.getItem('ado_project');
-    if (org && project) {
-      window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
     }
   };
   
@@ -602,7 +594,7 @@ export default function EpicTreeView() {
                     key={item.id}
                     item={item}
                     level={0}
-                    onOpenWorkItem={onOpenWorkItem}
+                    openWorkItem={openWorkItem}
                     expandedItems={expandedItems}
                     toggleExpand={toggleExpand}
                     childrenCache={childrenCache}
@@ -620,7 +612,7 @@ export default function EpicTreeView() {
             pinnedIds={pinnedIds}
             isPinned={isPinned}
             togglePin={togglePin}
-            onOpenWorkItem={onOpenWorkItem}
+            openWorkItem={openWorkItem}
             expandedItems={expandedItems}
             toggleExpand={toggleExpand}
             childrenCache={childrenCache}

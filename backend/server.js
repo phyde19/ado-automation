@@ -27,6 +27,34 @@ const authHeader = {
   'Content-Type': 'application/json'
 };
 
+// Helper: Escape single quotes for WIQL string literals
+function escapeWiql(str) {
+  if (!str) return str;
+  return str.replace(/'/g, "''");
+}
+
+// Helper: Fetch work items by IDs with relations (chunked to respect ADO 200 limit)
+async function fetchWorkItemsByIds(ids, includeRelations = true) {
+  if (!ids || ids.length === 0) return [];
+  
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    chunks.push(ids.slice(i, i + 200));
+  }
+  
+  const expand = includeRelations ? '&$expand=relations' : '';
+  const items = [];
+  
+  for (const chunk of chunks) {
+    const url = `${BASE_URL}/wit/workitems?ids=${chunk.join(',')}${expand}&api-version=7.1`;
+    const response = await fetch(url, { headers: authHeader });
+    const data = await response.json();
+    if (data.value) items.push(...data.value);
+  }
+  
+  return items;
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -97,15 +125,24 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
-// Execute WIQL query
+// Execute WIQL query (read-only by design - WIQL only supports SELECT)
+// Note: This endpoint accepts arbitrary WIQL for flexibility.
+// WIQL is inherently read-only; ADO's WIQL API only supports SELECT queries.
 app.post('/api/wiql', async (req, res) => {
   try {
+    const query = (req.body.query || '').trim();
+    
+    // Validate query starts with SELECT (case-insensitive)
+    if (!query || !/^\s*SELECT\s+/i.test(query)) {
+      return res.status(400).json({ error: 'Invalid query: must be a SELECT statement' });
+    }
+    
     const url = `${BASE_URL}/wit/wiql?api-version=7.1`;
     
     const response = await fetch(url, {
       method: 'POST',
       headers: authHeader,
-      body: JSON.stringify({ query: req.body.query })
+      body: JSON.stringify({ query })
     });
     const data = await response.json();
     res.json(data);
@@ -123,24 +160,8 @@ app.post('/api/workitems/batch', async (req, res) => {
       return res.json({ value: [] });
     }
     
-    // ADO API limits to 200 items per request
-    const chunks = [];
-    for (let i = 0; i < ids.length; i += 200) {
-      chunks.push(ids.slice(i, i + 200));
-    }
-    
-    const allWorkItems = [];
-    for (const chunk of chunks) {
-      const url = `${BASE_URL}/wit/workitems?ids=${chunk.join(',')}&$expand=relations&api-version=7.1`;
-      
-      const response = await fetch(url, { headers: authHeader });
-      const data = await response.json();
-      if (data.value) {
-        allWorkItems.push(...data.value);
-      }
-    }
-    
-    res.json({ value: allWorkItems });
+    const workItems = await fetchWorkItemsByIds(ids);
+    res.json({ value: workItems });
   } catch (error) {
     console.error('Error fetching work items:', error);
     res.status(500).json({ error: error.message });
@@ -165,7 +186,7 @@ app.get('/api/workitems/:id', async (req, res) => {
 // type: All|Epic|Feature|User Story|Task (defaults to Epic)
 app.get('/api/workitems', async (req, res) => {
   try {
-    const type = req.query.type || 'Epic';
+    const type = escapeWiql(req.query.type) || 'Epic';
 
     let typeFilter;
     if (type === 'All') {
@@ -195,24 +216,9 @@ app.get('/api/workitems', async (req, res) => {
     }
 
     const ids = wiqlData.workItems.map(wi => wi.id);
+    const workItems = await fetchWorkItemsByIds(ids);
 
-    // Reuse the same chunking logic as batch endpoint (ADO limit ~200 per request)
-    const chunks = [];
-    for (let i = 0; i < ids.length; i += 200) {
-      chunks.push(ids.slice(i, i + 200));
-    }
-
-    const allWorkItems = [];
-    for (const chunk of chunks) {
-      const workItemsUrl = `${BASE_URL}/wit/workitems?ids=${chunk.join(',')}&$expand=relations&api-version=7.1`;
-      const workItemsResponse = await fetch(workItemsUrl, { headers: authHeader });
-      const workItemsData = await workItemsResponse.json();
-      if (workItemsData.value) {
-        allWorkItems.push(...workItemsData.value);
-      }
-    }
-
-    res.json({ value: allWorkItems });
+    res.json({ value: workItems });
   } catch (error) {
     console.error('Error fetching workitems by type:', error);
     res.status(500).json({ error: error.message });
@@ -243,23 +249,9 @@ app.get('/api/epics', async (req, res) => {
     }
     
     const ids = wiqlData.workItems.map(wi => wi.id);
+    const workItems = await fetchWorkItemsByIds(ids);
 
-    const chunks = [];
-    for (let i = 0; i < ids.length; i += 200) {
-      chunks.push(ids.slice(i, i + 200));
-    }
-
-    const allWorkItems = [];
-    for (const chunk of chunks) {
-      const workItemsUrl = `${BASE_URL}/wit/workitems?ids=${chunk.join(',')}&$expand=relations&api-version=7.1`;
-      const workItemsResponse = await fetch(workItemsUrl, { headers: authHeader });
-      const workItemsData = await workItemsResponse.json();
-      if (workItemsData.value) {
-        allWorkItems.push(...workItemsData.value);
-      }
-    }
-
-    res.json({ value: allWorkItems });
+    res.json({ value: workItems });
   } catch (error) {
     console.error('Error fetching epics:', error);
     res.status(500).json({ error: error.message });
@@ -269,9 +261,9 @@ app.get('/api/epics', async (req, res) => {
 // Get work items for an iteration (sprint)
 app.get('/api/iterations/:iterationPath/workitems', async (req, res) => {
   try {
-    const iterationPath = decodeURIComponent(req.params.iterationPath);
-    const assignedTo = req.query.assignedTo;
-    const workItemType = req.query.type;
+    const iterationPath = escapeWiql(decodeURIComponent(req.params.iterationPath));
+    const assignedTo = escapeWiql(req.query.assignedTo);
+    const workItemType = escapeWiql(req.query.type);
     
     let query = `
       SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.WorkItemType]
@@ -303,12 +295,9 @@ app.get('/api/iterations/:iterationPath/workitems', async (req, res) => {
     }
     
     const ids = wiqlData.workItems.map(wi => wi.id);
-    const workItemsUrl = `${BASE_URL}/wit/workitems?ids=${ids.slice(0, 200).join(',')}&$expand=relations&api-version=7.1`;
+    const workItems = await fetchWorkItemsByIds(ids);
     
-    const workItemsResponse = await fetch(workItemsUrl, { headers: authHeader });
-    const workItemsData = await workItemsResponse.json();
-    
-    res.json(workItemsData);
+    res.json({ value: workItems });
   } catch (error) {
     console.error('Error fetching iteration work items:', error);
     res.status(500).json({ error: error.message });
@@ -319,8 +308,8 @@ app.get('/api/iterations/:iterationPath/workitems', async (req, res) => {
 // Returns { value: WorkItem[], sprintIds: number[] }
 app.get('/api/iterations/:iterationPath/tree', async (req, res) => {
   try {
-    const iterationPath = decodeURIComponent(req.params.iterationPath);
-    const assignedTo = req.query.assignedTo;
+    const iterationPath = escapeWiql(decodeURIComponent(req.params.iterationPath));
+    const assignedTo = escapeWiql(req.query.assignedTo);
 
     let query = `
       SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.WorkItemType]
@@ -347,22 +336,6 @@ app.get('/api/iterations/:iterationPath/tree', async (req, res) => {
     const sprintIds = (wiqlData.workItems || []).map(wi => wi.id);
     if (sprintIds.length === 0) {
       return res.json({ value: [], sprintIds: [] });
-    }
-
-    // Helper: fetch work items by ids with relations (chunked)
-    async function fetchWorkItemsByIds(ids) {
-      const chunks = [];
-      for (let i = 0; i < ids.length; i += 200) {
-        chunks.push(ids.slice(i, i + 200));
-      }
-      const items = [];
-      for (const chunk of chunks) {
-        const url = `${BASE_URL}/wit/workitems?ids=${chunk.join(',')}&$expand=relations&api-version=7.1`;
-        const r = await fetch(url, { headers: authHeader });
-        const d = await r.json();
-        if (d.value) items.push(...d.value);
-      }
-      return items;
     }
 
     // 2) Fetch sprint items (with relations)
@@ -462,7 +435,7 @@ app.get('/api/workitems/:id/children', async (req, res) => {
 app.get('/api/search', async (req, res) => {
   try {
     const searchText = (req.query.q || '').trim();
-    const type = req.query.type || 'All';
+    const type = escapeWiql(req.query.type) || 'All';
     
     if (!searchText) {
       return res.json({ value: [] });
@@ -493,7 +466,7 @@ app.get('/api/search', async (req, res) => {
     }
     
     // Escape single quotes in search text for WIQL
-    const escapedSearch = searchText.replace(/'/g, "''");
+    const escapedSearch = escapeWiql(searchText);
     
     const query = `
       SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo]
@@ -517,12 +490,9 @@ app.get('/api/search', async (req, res) => {
     }
     
     const ids = wiqlData.workItems.map(wi => wi.id).slice(0, 100);
-    const workItemsUrl = `${BASE_URL}/wit/workitems?ids=${ids.join(',')}&api-version=7.1`;
+    const workItems = await fetchWorkItemsByIds(ids, false);
     
-    const workItemsResponse = await fetch(workItemsUrl, { headers: authHeader });
-    const workItemsData = await workItemsResponse.json();
-    
-    res.json(workItemsData);
+    res.json({ value: workItems });
   } catch (error) {
     console.error('Error searching work items:', error);
     res.status(500).json({ error: error.message });

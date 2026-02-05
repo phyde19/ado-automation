@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { getPullRequests } from '../services/api';
-import { Spinner, FilterLabel, Select, IconButton, Icons } from './shared/ui';
+import { Spinner, FilterLabel, Select, IconButton, Icons, getTimeAgo } from './shared/ui';
 
 // PR status badge
 function PRStatusBadge({ status }) {
@@ -117,19 +117,6 @@ function PRRow({ pr, onOpen }) {
       </div>
     </button>
   );
-}
-
-function getTimeAgo(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
 }
 
 export default function PRsView() {

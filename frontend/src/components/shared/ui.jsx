@@ -1,5 +1,20 @@
 import React from 'react';
 
+// Format relative time (e.g., "5m ago", "2h ago", "3d ago")
+export function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - new Date(date);
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(date).toLocaleDateString();
+}
+
 // Spinner
 export const Spinner = ({ className = 'w-4 h-4' }) => (
   <svg className={`animate-spin text-slate-500 ${className}`} fill="none" viewBox="0 0 24 24">
@@ -253,4 +268,13 @@ export function Typeahead({ options, valueId, onChangeId, placeholder, showAllOp
       )}
     </div>
   );
+}
+
+// Open work item in Azure DevOps (uses localStorage for org/project)
+export function openWorkItem(id) {
+  const org = localStorage.getItem('ado_org');
+  const project = localStorage.getItem('ado_project');
+  if (org && project) {
+    window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
+  }
 }

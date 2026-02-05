@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
-import { getTeams, getIterations, getSprintWorkItems } from '../../services/api';
-import { Widget, WidgetLink, WidgetEmpty, Spinner, Icons } from '../shared/ui';
+import { getTeams, getIterations, getIterationWorkItems } from '../../services/api';
+import { Widget, WidgetLink, WidgetEmpty, Spinner, Icons, openWorkItem } from '../shared/ui';
 import { WorkItemTypeBadge, WorkItemStateBadge } from '../WorkItemBadge';
 
 const STORAGE_KEY = 'ado-dashboard-sprint-widget';
@@ -73,7 +73,7 @@ export default function SprintWidget({ className = '' }) {
   // Get sprint work items (filtered by user if configured)
   const { data: workItemsData, loading: loadingItems } = useApi(
     () => activeIteration?.path 
-      ? getSprintWorkItems(activeIteration.path, { assignedTo: adoUser || undefined }) 
+      ? getIterationWorkItems(activeIteration.path, { assignedTo: adoUser || undefined }) 
       : Promise.resolve({ value: [] }),
     [activeIteration?.path, adoUser],
     { enabled: !!activeIteration?.path }
@@ -91,14 +91,6 @@ export default function SprintWidget({ className = '' }) {
     });
     return byState;
   }, [workItems]);
-  
-  const openWorkItem = (id) => {
-    const org = localStorage.getItem('ado_org');
-    const project = localStorage.getItem('ado_project');
-    if (org && project) {
-      window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
-    }
-  };
   
   const goToSprints = () => {
     if (activeIteration?.path) {

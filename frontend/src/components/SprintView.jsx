@@ -4,7 +4,7 @@ import { getIterations, getIterationTree, getTeams, getTeamMembers, getChildren 
 import { useApi } from '../hooks/useApi';
 import { usePinnedItems } from '../hooks/usePinnedItems';
 import { WorkItemTypeBadge, WorkItemStateBadge, WorkItemId } from './WorkItemBadge';
-import { Spinner, FilterLabel, Select, IconButton, Icons, PinButton } from './shared/ui';
+import { Spinner, FilterLabel, Select, IconButton, Icons, PinButton, openWorkItem } from './shared/ui';
 
 function getParentId(item) {
   const url = item?.relations?.find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse')?.url;
@@ -407,14 +407,6 @@ export default function SprintView() {
     }
   };
   
-  const onOpenWorkItem = (id) => {
-    const org = localStorage.getItem('ado_org');
-    const project = localStorage.getItem('ado_project');
-    if (org && project) {
-      window.open(`https://dev.azure.com/${org}/${project}/_workitems/edit/${id}`, '_blank');
-    }
-  };
-  
   const isLoading = loadingTeams || loadingIterations || loadingWorkItems;
   
   // When filters change, reset expansion/cached children for clean view
@@ -515,7 +507,7 @@ export default function SprintView() {
                   key={root.id}
                   item={root}
                   level={0}
-                  onOpen={onOpenWorkItem}
+                  onOpen={openWorkItem}
                   expandedItems={expandedItems}
                   toggleExpand={toggleExpand}
                   childrenCache={childrenCache}

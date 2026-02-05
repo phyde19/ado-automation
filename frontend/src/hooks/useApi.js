@@ -64,17 +64,23 @@ export function useApi(fetchFn, deps = [], options = {}) {
 }
 
 // Hook for lazy loading with manual trigger
-export function useLazyApi(fetchFn) {
+// Can be used two ways:
+// 1. useLazyApi(fetchFn) then call execute(...args)
+// 2. useLazyApi() then call execute(fetchFn)
+export function useLazyApi(defaultFetchFn = null) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  const execute = useCallback(async (...args) => {
+  const execute = useCallback(async (fnOrArg, ...args) => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await fetchFn(...args);
+      // If first arg is a function, use it. Otherwise use default fetchFn with all args.
+      const result = typeof fnOrArg === 'function' 
+        ? await fnOrArg(...args)
+        : await defaultFetchFn(fnOrArg, ...args);
       setData(result);
       return result;
     } catch (err) {
@@ -83,7 +89,7 @@ export function useLazyApi(fetchFn) {
     } finally {
       setLoading(false);
     }
-  }, [fetchFn]);
+  }, [defaultFetchFn]);
   
   return { data, loading, error, execute };
 }

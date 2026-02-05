@@ -89,6 +89,14 @@ export const Icons = {
       <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
     </svg>
   ),
+  // External link
+  ExternalLink: () => (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  ),
 };
 
 // Pin button - visible, easy to click
@@ -122,6 +130,47 @@ export const SearchInput = ({ value, onChange, placeholder, searching = false })
       className="w-full pl-10 pr-4 py-2 text-sm rounded-md border border-slate-700 text-slate-200 placeholder-slate-500 focus:border-slate-600 focus:outline-none"
       style={{ background: '#1e2028' }}
     />
+  </div>
+);
+
+// Widget container for dashboard
+export const Widget = ({ title, action, children, className = '' }) => (
+  <div 
+    className={`rounded-xl border border-slate-800 flex flex-col overflow-hidden ${className}`}
+    style={{ background: '#16181d' }}
+  >
+    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      {typeof title === 'string' ? (
+        <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+      ) : (
+        <div className="text-sm">{title}</div>
+      )}
+      {action}
+    </div>
+    <div className="flex-1 overflow-auto">
+      {children}
+    </div>
+  </div>
+);
+
+// Widget link action (e.g., "View All →")
+export const WidgetLink = ({ to, children }) => (
+  <a 
+    href={to} 
+    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+  >
+    {children}
+    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  </a>
+);
+
+// Empty state for widgets
+export const WidgetEmpty = ({ icon, message }) => (
+  <div className="flex flex-col items-center justify-center h-full py-8 text-slate-500">
+    {icon && <span className="mb-2 opacity-50">{icon}</span>}
+    <span className="text-sm">{message}</span>
   </div>
 );
 

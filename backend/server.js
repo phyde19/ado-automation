@@ -13,9 +13,12 @@ app.use(express.json());
 // Azure DevOps config
 const ADO_ORG = process.env.ADO_ORG;
 const ADO_PROJECT = process.env.ADO_PROJECT;
+const ADO_PROJECT_PRS = process.env.ADO_PROJECT_PRS || ADO_PROJECT; // Defaults to main project
 const ADO_PAT = process.env.ADO_PAT;
+const ADO_USER = process.env.ADO_USER || ''; // User's display name for filtering
 
 const BASE_URL = `https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis`;
+const PR_BASE_URL = `https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT_PRS}/_apis`;
 const ORG_URL = `https://dev.azure.com/${ADO_ORG}/_apis`;
 
 // Auth header for ADO API
@@ -30,7 +33,9 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     configured: !!(ADO_ORG && ADO_PROJECT && ADO_PAT),
     org: ADO_ORG,
-    project: ADO_PROJECT
+    project: ADO_PROJECT,
+    projectPRs: ADO_PROJECT_PRS,
+    user: ADO_USER || null
   });
 });
 
@@ -456,8 +461,30 @@ app.get('/api/workitems/:id/children', async (req, res) => {
 // Search work items
 app.get('/api/search', async (req, res) => {
   try {
-    const searchText = req.query.q || '';
+    const searchText = (req.query.q || '').trim();
     const type = req.query.type || 'All';
+    
+    if (!searchText) {
+      return res.json({ value: [] });
+    }
+    
+    // Check if searching by ID (numeric)
+    const isIdSearch = /^\d+$/.test(searchText);
+    
+    if (isIdSearch) {
+      // Direct ID lookup
+      const url = `${BASE_URL}/wit/workitems/${searchText}?api-version=7.1`;
+      try {
+        const response = await fetch(url, { headers: authHeader });
+        if (response.ok) {
+          const workItem = await response.json();
+          return res.json({ value: [workItem] });
+        }
+      } catch (e) {
+        // ID not found, fall through to return empty
+      }
+      return res.json({ value: [] });
+    }
     
     // Build type filter
     let typeFilter = '';
@@ -465,10 +492,13 @@ app.get('/api/search', async (req, res) => {
       typeFilter = `AND [System.WorkItemType] = '${type}'`;
     }
     
+    // Escape single quotes in search text for WIQL
+    const escapedSearch = searchText.replace(/'/g, "''");
+    
     const query = `
       SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo]
       FROM WorkItems
-      WHERE [System.Title] CONTAINS '${searchText}'
+      WHERE [System.Title] CONTAINS '${escapedSearch}'
       AND [System.State] <> 'Removed'
       ${typeFilter}
       ORDER BY [System.WorkItemType], [System.ChangedDate] DESC
@@ -499,7 +529,51 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Get pull requests (uses PR project)
+app.get('/api/prs', async (req, res) => {
+  try {
+    const status = req.query.status || 'active';
+    const top = req.query['$top'] || 20;
+    
+    // First get all repositories in the PR project
+    const reposUrl = `${PR_BASE_URL}/git/repositories?api-version=7.1`;
+    const reposResponse = await fetch(reposUrl, { headers: authHeader });
+    const reposData = await reposResponse.json();
+    
+    if (!reposData.value || reposData.value.length === 0) {
+      return res.json({ value: [] });
+    }
+    
+    // Fetch PRs from all repos in parallel
+    const prPromises = reposData.value.map(async (repo) => {
+      const prUrl = `${PR_BASE_URL}/git/repositories/${repo.id}/pullrequests?searchCriteria.status=${status}&$top=${top}&api-version=7.1`;
+      try {
+        const prResponse = await fetch(prUrl, { headers: authHeader });
+        const prData = await prResponse.json();
+        return prData.value || [];
+      } catch (err) {
+        console.error(`Error fetching PRs for repo ${repo.name}:`, err);
+        return [];
+      }
+    });
+    
+    const allPRs = (await Promise.all(prPromises)).flat();
+    
+    // Sort by creation date, most recent first
+    allPRs.sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate));
+    
+    // Return top N
+    res.json({ value: allPRs.slice(0, parseInt(top)) });
+  } catch (error) {
+    console.error('Error fetching pull requests:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`ADO Dashboard backend running on port ${PORT}`);
   console.log(`Configured for org: ${ADO_ORG}, project: ${ADO_PROJECT}`);
+  if (ADO_PROJECT_PRS !== ADO_PROJECT) {
+    console.log(`PRs project: ${ADO_PROJECT_PRS}`);
+  }
 });

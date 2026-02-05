@@ -465,11 +465,29 @@ export default function SprintView() {
             </Select>
           </div>
           
-          {/* Spacer + count + refresh */}
-          <div className="flex items-center gap-4 ml-auto">
+          {/* Spacer + count + actions */}
+          <div className="flex items-center gap-3 ml-auto">
             <span className="text-xs text-slate-500">
               {treeData?.sprintIds?.length || 0} items
             </span>
+            <IconButton 
+              onClick={() => {
+                const org = localStorage.getItem('ado_org');
+                const project = localStorage.getItem('ado_project');
+                if (org && project && activeIteration && activeTeam) {
+                  const iterEncoded = encodeURIComponent(activeIteration);
+                  const teamEncoded = encodeURIComponent(activeTeam);
+                  window.open(
+                    `https://dev.azure.com/${org}/${project}/_backlogs/backlog/${teamEncoded}/Backlog%20items?iteration=${iterEncoded}`,
+                    '_blank'
+                  );
+                }
+              }} 
+              title="Open in Azure DevOps"
+              disabled={!activeIteration}
+            >
+              <Icons.ExternalLink />
+            </IconButton>
             <IconButton onClick={refetch} title="Refresh">
               <Icons.Refresh />
             </IconButton>

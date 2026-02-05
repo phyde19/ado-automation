@@ -207,6 +207,7 @@ app.get('/api/workitems', async (req, res) => {
       SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.AreaPath], [System.IterationPath]
       FROM WorkItems
       WHERE ${typeFilter}
+      AND [System.TeamProject] = '${ADO_PROJECT}'
       AND [System.State] <> 'Removed'
       ${yearFilter}
       ORDER BY [System.WorkItemType], [System.CreatedDate] DESC
@@ -241,6 +242,7 @@ app.get('/api/epics', async (req, res) => {
       SELECT [System.Id], [System.Title], [System.State], [System.AreaPath], [System.IterationPath]
       FROM WorkItems
       WHERE [System.WorkItemType] = 'Epic'
+      AND [System.TeamProject] = '${ADO_PROJECT}'
       AND [System.State] <> 'Removed'
       ORDER BY [System.CreatedDate] DESC
     `;
@@ -278,13 +280,14 @@ app.get('/api/iterations/:iterationPath/workitems', async (req, res) => {
       SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.WorkItemType]
       FROM WorkItems
       WHERE [System.IterationPath] = '${iterationPath}'
+      AND [System.TeamProject] = '${ADO_PROJECT}'
       AND [System.State] <> 'Removed'
     `;
     
     if (assignedTo) {
       query += ` AND [System.AssignedTo] = '${assignedTo}'`;
     }
-    
+
     if (workItemType) {
       query += ` AND [System.WorkItemType] = '${workItemType}'`;
     }
@@ -324,6 +327,7 @@ app.get('/api/iterations/:iterationPath/tree', async (req, res) => {
       SELECT [System.Id], [System.Title], [System.State], [System.AssignedTo], [System.WorkItemType]
       FROM WorkItems
       WHERE [System.IterationPath] = '${iterationPath}'
+      AND [System.TeamProject] = '${ADO_PROJECT}'
       AND [System.State] <> 'Removed'
     `;
 
@@ -481,6 +485,7 @@ app.get('/api/search', async (req, res) => {
       SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo]
       FROM WorkItems
       WHERE [System.Title] CONTAINS '${escapedSearch}'
+      AND [System.TeamProject] = '${ADO_PROJECT}'
       AND [System.State] <> 'Removed'
       ${typeFilter}
       ORDER BY [System.WorkItemType], [System.ChangedDate] DESC
